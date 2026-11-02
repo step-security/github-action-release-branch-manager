@@ -116,12 +116,12 @@ test('release branches exist for all tags', async () => {
   const sha2 = await createFileAndCommit(gitWrapper, repoPath);
   await gitWrapper.createTag('1.1.0', sha2, false);
   await gitWrapper.createBranch('release/v1', sha2);
-  await gitWrapper.checkout('master');
+  await gitWrapper.checkout('main');
   await createFileAndCommit(gitWrapper, repoPath);
   const sha3 = await createFileAndCommit(gitWrapper, repoPath);
   await gitWrapper.createTag('2.0.0', sha3, false);
   await gitWrapper.createBranch('release/v2', sha3);
-  await gitWrapper.checkout('master');
+  await gitWrapper.checkout('main');
   await createFileAndCommit(gitWrapper, repoPath);
   const sha4 = await createFileAndCommit(gitWrapper, repoPath);
   await gitWrapper.createTag('3.0.0', sha4, false);
@@ -223,7 +223,7 @@ test('create multiple release branches 2', async () => {
   const sha2 = await createFileAndCommit(gitWrapper, repoPath);
   await gitWrapper.createTag('1.1.0', sha2, false);
   await gitWrapper.createBranch('release/v1', sha2);
-  await gitWrapper.checkout('master');
+  await gitWrapper.checkout('main');
   await createFileAndCommit(gitWrapper, repoPath);
   const sha3 = await createFileAndCommit(gitWrapper, repoPath);
   await gitWrapper.createTag('2.0.0', sha3, false);
