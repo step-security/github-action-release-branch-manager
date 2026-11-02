@@ -4,6 +4,7 @@
   "description": "github-action-release-branch-manager",
   "main": "index.js",
   "scripts": {
+    "build": "ncc build src/app.js -o dist",
     "lint": "eslint .",
     "test": "jest",
     "all": "npm run lint && npm run test"

@@ -27,7 +27,21 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Build dist
+        run: npm run build
+
+      - name: Check dist is up to date
+        run: |
+          if [ -n "$(git diff --name-only dist/)" ]; then
+            echo "dist/index.js is out of date. Run 'npm run build' and commit the result."
+            git diff dist/
+            exit 1
+          fi
+
       - name: Run Tests
         env:
           LOG_LEVEL: 'debug'
         run: npm test
+
+  test-positive:
+    uses: ./.github/workflows/test-positive.yml
