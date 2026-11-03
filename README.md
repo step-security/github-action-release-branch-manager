@@ -78,7 +78,7 @@ Example of workflow that that will create major release tags. To use it, just ad
     publish:
       runs-on: ubuntu-latest
       steps:
-        - uses: step-security/github-action-release-branch-manager@v1
+        - uses: step-security/github-action-release-branch-manager@v2
 ```
 
 
