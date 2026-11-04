@@ -1,0 +1,128 @@
+name: 'Release Branch Manager GitHub Action'
+description: 'Creates release branch based on tag major version'
+author: 'step-security'
+branding:
+  icon: 'file'
+  color: 'white'
+inputs:
+  token:
+    description: "GitHub Token used to perform git and GitHub operations"
+    required: false
+    default: ${{ github.token }}
+  log-level:
+    description: "Log level for this action. Available options: ['off', 'error', 'warn', 'info', 'debug']. Default 'info'"
+    required: false
+    default: "info"
+  git-user-name:
+    description: "Git user name that will be used for git config"
+    required: false
+    default: "actions-bot"
+  git-user-email:
+    description: "Git user email that will be used for git config"
+    required: false
+    default: "actions-bot@users.noreply.github.com"
+  dry-run:
+    description: "Run action without pushing changes to upstream"
+    required: false
+    default: "false"
+  minimal-version:
+    description: "Minimal 'major' version that release branch creation should start from"
+    required: false
+    default: "0"
+outputs:
+  response:
+    description: 'Response in json format for example: {"succeeded":true,"reason":"CREATED_BRANCHES","message":"Successfully created release branches","data":{"release/v3":"3.1.0","release/v2":"2.0.0","release/v1":"1.1.0"}}'
+    value: ${{ steps.run_release_branch_manager.outputs.response }}
+runs:
+  using: "composite"
+  steps:
+    - name: Subscription check
+      env:
+        REPO_PRIVATE: ${{ github.event.repository.private }}
+      run: |
+        # validate subscription status
+        UPSTREAM="cloudposse/github-action-release-branch-manager"
+        ACTION_REPO="${GITHUB_ACTION_REPOSITORY:-}"
+        DOCS_URL="https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions"
+
+        echo ""
+        echo -e "\033[1;36mStepSecurity Maintained Action\033[0m"
+        echo "Secure drop-in replacement for $UPSTREAM"
+        if [ "$REPO_PRIVATE" = "false" ]; then
+          echo -e "\033[32m✓ Free for public repositories\033[0m"
+        fi
+        echo -e "\033[36mLearn more:\033[0m $DOCS_URL"
+        echo ""
+
+        if [ "$REPO_PRIVATE" != "false" ]; then
+          SERVER_URL="${GITHUB_SERVER_URL:-https://github.com}"
+
+          if [ "$SERVER_URL" != "https://github.com" ]; then
+            BODY=$(printf '{"action":"%s","ghes_server":"%s"}' "$ACTION_REPO" "$SERVER_URL")
+          else
+            BODY=$(printf '{"action":"%s"}' "$ACTION_REPO")
+          fi
+
+          API_URL="https://agent.api.stepsecurity.io/v1/github/$GITHUB_REPOSITORY/actions/maintained-actions-subscription"
+
+          RESPONSE=$(curl --max-time 3 -s -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            "$API_URL" -o /dev/null) && CURL_EXIT_CODE=0 || CURL_EXIT_CODE=$?
+
+          if [ $CURL_EXIT_CODE -ne 0 ]; then
+            echo "Timeout or API not reachable. Continuing to next step."
+          elif [ "$RESPONSE" = "403" ]; then
+            echo -e "::error::\033[1;31mThis action requires a StepSecurity subscription for private repositories.\033[0m"
+            echo -e "::error::\033[31mLearn how to enable a subscription: $DOCS_URL\033[0m"
+            exit 1
+          fi
+        fi
+      shell: bash
+
+    - name: Checkout Repository
+      uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        token: ${{ inputs.token }}
+
+    - name: Setup Git Config
+      shell: bash
+      env:
+        GIT_USER_NAME: ${{ inputs.git-user-name }}
+        GIT_USER_EMAIL: ${{ inputs.git-user-email }}
+      run: |
+        git config --global user.name "$GIT_USER_NAME"
+        git config --global user.email "$GIT_USER_EMAIL"
+
+    - name: Run Release Branch Manager
+      uses: actions/github-script@v9
+      id: run_release_branch_manager
+      env:
+        LOG_LEVEL: '${{ inputs.log-level }}'
+        GITHUB_ACTION_PATH: '${{github.action_path}}'
+        WORKING_DIRECTORY: '${{ github.workspace }}'
+        DRY_RUN: '${{ inputs.dry-run }}'
+        MININAL_VERSION: '${{ inputs.minimal-version }}'
+        ## Fix later to use conventional github-token
+        TOKEN: ${{ inputs.token }} 
+      with:
+        github-token: ${{ inputs.token }}      
+        script: |
+          const { main } = require(process.env.GITHUB_ACTION_PATH + '/dist/index.js');
+          const dryRun = JSON.parse(process.env.DRY_RUN);
+          const minimalVersion = parseInt(process.env.MININAL_VERSION);
+          const token = process.env.TOKEN;
+
+          main(process.env.WORKING_DIRECTORY, minimalVersion, context, token, !dryRun)
+            .then((response) => {
+              if (response.succeeded) {
+                core.setOutput('response', JSON.stringify(response));
+              } else {
+                core.setFailed(response.message);
+              }
+            })
+            .catch((error) => {
+              core.setFailed(error);
+            });
