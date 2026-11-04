@@ -1,4 +1,4 @@
-const simpleGit = require('simple-git');
+const { simpleGit } = require('simple-git');
 const { logger } = require('./utils.js');
 
 class GitWrapper {
